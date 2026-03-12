@@ -664,7 +664,7 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="sidebar-bottom">
-          <button className="icon-btn" onClick={() => { setShowHelp(true); setShowMobileSidebar(false); }} title="Help & Setup">
+          <button className="icon-btn" onClick={() => { setShowHelp(true); setShowMobileSidebar(false); }} title="Setup Guide">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </button>
           <button className={`icon-btn ${showLogs ? 'active' : ''}`} onClick={() => { setShowLogs(true); setShowMobileSidebar(false); }} title="Live Logs">
@@ -1141,7 +1141,7 @@ const App: React.FC = () => {
         <div className="modal-overlay" onClick={() => setShowHelp(false)}>
           <div className="modal-content large" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Setup Guide & Backend Code</h3>
+              <h3>Setup Guide</h3>
               <button className="close-btn" onClick={() => setShowHelp(false)}><CloseIcon /></button>
             </div>
             <div className="help-tabs">

@@ -641,7 +641,6 @@ code,
 
 .queue-item.sending { background-color: rgba(59, 130, 246, 0.05); }
 .queue-item.success { opacity: 0.8; }
-.queue-item.error { }
 .queue-item.paused { opacity: 0.7; }
 .queue-item.cancelled { opacity: 0.5; }
 
