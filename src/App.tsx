@@ -499,11 +499,6 @@ const App: React.FC = () => {
       setShowHelp(true);
       return;
     }
-    if (currentPlatform === 'telegram' && (!telegramToken || !telegramChatId)) {
-      showNotify('Telegram Bot Token or Chat ID missing.', 'error');
-      setShowSettings(true);
-      return;
-    }
     const isBulk = bulkActive && bulkData.length > 0;
     
     let targetIndices: number[] = [];
@@ -642,17 +637,7 @@ const App: React.FC = () => {
         </header>
 
         <div className="editor-preview-layout">
-          {currentPlatform === 'telegram' ? (
-            <div className="construction-notice">
-              <div className="notice-content">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="construction-icon"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                <h2>Telegram Integration</h2>
-                <p>This feature is currently under construction. Stay tuned for updates!</p>
-                <button className="primary-btn" onClick={() => setCurrentPlatform('gmail')}>Switch to Gmail</button>
-              </div>
-            </div>
-          ) : (
-            <form className="compose-form" onSubmit={currentPlatform === 'whatsapp' ? handleGenerateWhatsApp : handleSend}>
+          <form className="compose-form" onSubmit={currentPlatform === 'whatsapp' ? handleGenerateWhatsApp : handleSend}>
               <div className="form-fields">
                 {currentPlatform === 'whatsapp' ? (
                   <div className="input-row">
@@ -808,7 +793,6 @@ const App: React.FC = () => {
                 </div>
               )}
             </form>
-          )}
 
           {(showPreview || showBulk || showWhatsAppList) && (
               <>

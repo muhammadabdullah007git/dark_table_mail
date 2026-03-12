@@ -1,70 +1,52 @@
-# Dark Table Mail
+# Dark Table Message
 
-A minimalist, high-performance email compose and bulk-mailing client inspired by the `zed.dev` design language. Built for speed, precision, and technical users.
+A minimalist, high-performance multi-platform messaging and bulk-mailing client inspired by the `zed.dev` design language. Built for speed, precision, and technical users.
 
 ![Design Aesthetic](https://img.shields.io/badge/Design-Zed.dev-blue)
-![Backend](https://img.shields.io/badge/Backend-Google%20Apps%20Script-green)
+![Platforms](https://img.shields.io/badge/Platforms-Gmail%20%7C%20WhatsApp-green)
 ![Theme](https://img.shields.io/badge/Theme-Pure%20Black%20%2F%20Off--white%20%2F%20One%20Dark-black)
 
 ## Key Features
 
-### 1. Professional WYSIWYG Editor
-- **Office-Suite Experience**: Direct visual editing with zero focus loss when using tools.
-- **Advanced Formatting**: 
-    - Bold, Italic, Underline, and **Strikethrough**.
-    - Text Alignment (**Left, Center, Right**).
-    - **Line & Paragraph Spacing**: Adjust vertical rhythm for professional layouts.
-    - **Left & Right Indentation**: Fine-tune text positioning.
-    - **Expanded Font Sizes**: 7 levels of control from **X-Small** to **Huge**.
-    - **Bulleted** and **Numbered** lists.
-    - Custom Indentation and Blockquotes.
-    - Integrated **Color Picker** for precise text coloring.
-- **Source Mode**: Toggle between visual editing and raw HTML source code with seamless synchronization.
+### 1. Dual-Platform Integration
+- **Gmail (GAS)**: Professional email composing and bulk mailing using Google Apps Script as a secure backend.
+- **WhatsApp (wa.me)**: Seamless message generation for WhatsApp.
+    - Generate `wa.me` links for single or bulk recipients.
+    - **WhatsApp Queue**: Manage and edit your generated messages in a dedicated side panel before sending.
+    - **Smart Formatting**: Dedicated toolbar for WhatsApp markup (`*bold*`, `_italic_`, `~strike~`, etc.).
+    - **Automatic CC**: Auto-prepends default country codes to local numbers.
 
-### 2. Advanced Bulk Mailing
-- **Flexible Data Source**: Click-to-select or drag-and-drop zone for **CSV**, **XLSX**, or **XLS** files.
-- **Smart Variable Mapping**: 
-    - Automatically detects `{variable}` placeholders in your To, CC, BCC, Subject, and Body.
-    - Integrated **How to Use Variables** guide in the help section.
-    - Sleek linear mapping interface to link variables to spreadsheet columns.
-- **Send Modes**: 
-    - **Auto**: Send to the entire list.
-    - **Fixed**: Specify an exact number of records to process.
-- **Collision Protection**: Precise brace-matching ensures your code/text stays intact unless specifically mapped as a variable.
+### 2. Professional Editors
+- **Rich Text (Gmail)**: Visual editing with advanced formatting (Bold, Italic, Lists, Colors, Spacing, Block Quotes, Inline Code, Monospace).
+- **Source Mode (Gmail)**: Direct HTML editing with live synchronization.
+- **Markup Editor (WhatsApp)**: Plain-text editor with a specialized toolbar for WhatsApp formatting symbols.
 
-### 3. Integrated Live Preview
-- **Real-time Rendering**: See exactly what your recipient will see, including HTML formatting and layout.
-- **Resizable Layout**: Drag the custom resizer handle to adjust the preview width.
-- **Metadata Mirroring**: Live preview of Subject and Recipient fields.
+### 3. Advanced Bulk Messaging
+- **Flexible Data Source**: Support for **CSV**, **XLSX**, and **XLS** files via drag-and-drop.
+- **Smart Variable Mapping**: Automatically detects `{variable}` placeholders in message templates and maps them to spreadsheet columns.
+- **Mailing Strategies**: 
+    - **Auto**: Process the entire list.
+    - **Range**: Specify an exact start/end record.
+    - **Selective**: Manually pick records from a searchable list.
 
-### 4. Deep Customization
-- **Gear Icon Settings**: Centralized system settings for all application configurations.
-- **Dynamic Themes**: 
-    - **Pure Black**: OLED-optimized deep black theme.
-    - **Off-white**: Professional soft light theme.
-    - **One Dark**: Technical blue-gray theme.
-    - **GitHub Light**: Clean white developer aesthetic.
-- **Dynamic Scaling**: **UI Size** slider that scales fonts, icons, and spacing proportionally across the entire app.
-- **UI Font**: Change the primary application font (Inter, Roboto, JetBrains Mono, etc.).
+### 4. Integrated Live Preview
+- **Real-time Rendering**: See exactly how your message looks before sending.
+- **Platform-Specific Preview**: Gmail preview renders full HTML; WhatsApp preview renders markup symbols as visual styles (Bold, Italic, etc.).
+- **Resizable Side Panel**: Drag to adjust your workspace.
 
-### 5. Modern UX
-- **Desktop Feel**: UI elements are unselectable to prevent accidental highlighting, while keeping editors, inputs, and preview content fully interactable.
-- **Smart Attachment Zone**: Supports both **drag-and-drop** and **click-to-select** with an adaptive layout.
-- **Auto-resetting Inputs**: Intelligent input handling allows you to re-select the same file or color without UI friction.
-
-### 6. Built-in Help System
-- **Quick Setup**: The `?` icon provides the exact **Google Apps Script code** and a step-by-step deployment guide.
-- **Automated Assistance**: If a GAS URL is missing during send, the app automatically opens the setup guide.
+### 5. Deep Customization & UX
+- **Dynamic Themes**: OLED Pure Black, Off-white, One Dark, and GitHub Light.
+- **Responsive Design**: Fully optimized for mobile with a hamburger menu and slide-out panels.
+- **Proportional Scaling**: Global UI Size slider to scale the entire application interface.
+- **Technical Aesthetic**: Clean, distraction-free UI with technical font options (Inter, JetBrains Mono, etc.).
 
 ---
 
 ## Tech Stack
 - **Frontend**: React (TypeScript) + Vite
-- **Styling**: Vanilla CSS (Relative `em` scaling & Custom Properties)
+- **Styling**: Vanilla CSS (Relative `em` scaling & CSS Variables)
 - **Parsing**: PapaParse (CSV) & SheetJS (XLSX)
-- **Icons**: Custom SVG components
-- **Backend**: Any API (Optimized for Google Apps Script)
-- **AI-Assisted Development**: Built and maintained with **Gemini CLI** for surgical code updates and rapid feature implementation.
+- **AI-Assisted Development**: Built and maintained with **Gemini CLI** for surgical updates and rapid feature implementation.
 
 ---
 
@@ -73,7 +55,7 @@ A minimalist, high-performance email compose and bulk-mailing client inspired by
 ### 1. Installation
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/muhammadabdullah007git/dark_table_mail
 
 # Install dependencies
 npm install
@@ -82,53 +64,26 @@ npm install
 npm run dev
 ```
 
-### 2. Backend Setup (Google Apps Script)
-Click the **`?` icon** in the sidebar to copy the backend code, or use this snippet:
+### 2. Backend Setup (For Gmail)
+Click the **`?` icon** in the sidebar to copy the Google Apps Script code and follow the step-by-step deployment guide.
 
-```javascript
-function doPost(e) {
-  try {
-    const data = JSON.parse(e.postData.contents);
-    MailApp.sendEmail({
-      to: data.to.join(','),
-      cc: data.cc ? data.cc.join(',') : '',
-      bcc: data.bcc ? data.bcc.join(',') : '',
-      subject: data.subject,
-      htmlBody: data.body,
-      attachments: data.attachments ? data.attachments.map(att => {
-        return Utilities.newBlob(Utilities.base64Decode(att.data), att.type, att.name);
-      }) : []
-    });
-    return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
-  } catch (err) {
-    return ContentService.createTextOutput("Error: " + err.toString()).setMimeType(ContentService.MimeType.TEXT);
-  }
-}
-```
-
-### 3. Configuration
+### 3. WhatsApp Setup
 1. Click the **Gear Icon** in the sidebar.
-2. Paste your **Deployment URL** from Google Apps Script.
-3. Your settings, including **Theme**, **UI Font**, and **Size**, are saved in cookies.
+2. Enter your **Default Country Code** (e.g., `92` or `1`).
+3. Compose your message using `{variable}` placeholders if using bulk data.
+4. Click **Generate** to populate your WhatsApp Queue.
 
 ---
 
 ## Security and Privacy
-- **Local Processing**: All file parsing and variable replacement happens locally in your browser. No data ever leaves your machine except to your own configured backend.
-- **Zero Tracking**: Dark Table Mail does not include any third-party tracking or analytics.
+- **Local-Only Processing**: Your data (CSVs, Excel files, messages) is processed entirely in your browser. 
+- **Direct Backend**: No middle-man servers. Data goes directly from your browser to Google (for Gmail) or generates local links (for WhatsApp).
+- **No Tracking**: Zero third-party analytics or tracking scripts.
 
 ## Deployment
 
 ### Deploy to Render
-You can easily deploy this project to Render as a static site:
-
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/muhammadabdullah007git/dark_table_mail)
-
-1. Connect your GitHub repository to Render.
-2. Select **Static Site** as the service type.
-3. Use the following settings:
-   - **Build Command:** `npm install && npm run build`
-   - **Publish Directory:** `dist`
 
 ## License
 MIT
