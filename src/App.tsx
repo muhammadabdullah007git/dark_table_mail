@@ -19,6 +19,15 @@ interface WhatsAppItem {
   sent: boolean;
 }
 
+interface MailQueueItem {
+  id: number;
+  to: string;
+  subject: string;
+  payload: any;
+  status: 'pending' | 'sending' | 'success' | 'error' | 'paused' | 'cancelled';
+  error?: string;
+}
+
 type Platform = 'gmail' | 'whatsapp';
 
 const App: React.FC = () => {
@@ -45,6 +54,13 @@ const App: React.FC = () => {
   const [helpTab, setHelpTab] = useState<Platform>('gmail');
   const [generatedWhatsAppItems, setGeneratedWhatsAppItems] = useState<WhatsAppItem[]>([]);
   const [showWhatsAppList, setShowWhatsAppList] = useState(false);
+  const [mailQueue, setMailQueue] = useState<MailQueueItem[]>([]);
+  const [isMailPaused, setIsMailPaused] = useState(false);
+  const [showMailQueue, setShowMailQueue] = useState(false);
+  
+  const mailQueueRef = useRef<MailQueueItem[]>([]);
+  const isMailPausedRef = useRef(false);
+  const isMailCancelledRef = useRef(false);
   
   // Compose States
   const [to, setTo] = useState('');
@@ -520,48 +536,108 @@ const App: React.FC = () => {
     const sendCount = targetIndices.length;
     if (isBulk && sendCount <= 0) { showNotify('No recipients selected', 'error'); return; }
     
+    // Prepare Queue
+    const newQueue: MailQueueItem[] = targetIndices.map((dataIndex, idx) => {
+      const row = isBulk ? bulkData[dataIndex] : {};
+      const recipientTo = replaceVariables(to, row);
+      const payload = {
+        to: recipientTo.split(',').map(s => s.trim()).filter(Boolean),
+        cc: replaceVariables(cc, row).split(',').map(s => s.trim()).filter(Boolean),
+        bcc: replaceVariables(bcc, row).split(',').map(s => s.trim()).filter(Boolean),
+        subject: replaceVariables(subject, row),
+        body: replaceVariables(body, row),
+        attachments
+      };
+      return {
+        id: idx,
+        to: recipientTo,
+        subject: payload.subject,
+        payload,
+        status: 'pending'
+      };
+    });
+
+    setMailQueue(newQueue);
+    mailQueueRef.current = newQueue;
+    setShowMailQueue(true);
+    setShowBulk(false);
+    setShowPreview(false);
+    isMailPausedRef.current = false;
+    isMailCancelledRef.current = false;
+    setIsMailPaused(false);
     setSending(true);
+
     if (isBulk) addLog(`Starting bulk send of ${sendCount} messages...`, 'info');
 
-    try {
-      for (let i = 0; i < targetIndices.length; i++) {
-        const dataIndex = targetIndices[i];
-        const row = isBulk ? bulkData[dataIndex] : {};
-        const recipientTo = replaceVariables(to, row);
-        
-        const payload = {
-          to: recipientTo.split(',').map(s => s.trim()).filter(Boolean),
-          cc: replaceVariables(cc, row).split(',').map(s => s.trim()).filter(Boolean),
-          bcc: replaceVariables(bcc, row).split(',').map(s => s.trim()).filter(Boolean),
-          subject: replaceVariables(subject, row),
-          body: replaceVariables(body, row),
-          attachments
-        };
+    for (let i = 0; i < newQueue.length; i++) {
+      // Check for global cancel
+      if (isMailCancelledRef.current) break;
 
-        try {
-          if (currentPlatform === 'gmail') {
-            await fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-          } else if (currentPlatform === 'whatsapp') {
-            // Fallback to wa.me if no API provided (only for single send, not very useful for bulk)
-            const phone = recipientTo.replace(/\D/g, '');
-            const text = encodeURIComponent(payload.body.replace(/<[^>]*>/g, ''));
-            window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
-          }
-          addLog(`Successfully sent to: ${recipientTo}`, 'success');
-        } catch (err) {
-          addLog(`Failed sending to: ${recipientTo} - ${String(err)}`, 'error');
-        }
-
-        if (isBulk && (i + 1) % 5 === 0) showNotify(`Sent ${i + 1}/${sendCount}...`, 'info');
+      // Check for global pause
+      while (isMailPausedRef.current && !isMailCancelledRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
-      showNotify(`Successfully processed ${sendCount} message(s)!`, 'success');
-      if (!isBulk) { setTo(''); setCc(''); setBcc(''); setSubject(''); setBody(''); setAttachments([]); if (editorRef.current) editorRef.current.innerHTML = ''; }
-    } catch (err) { 
-      showNotify('Error in sending process', 'error'); 
-      addLog(`Critical error in sending process: ${String(err)}`, 'error');
-    } finally { 
-      setSending(false); 
+      if (isMailCancelledRef.current) break;
+
+      const item = mailQueueRef.current[i];
+      if (item.status === 'cancelled' || item.status === 'success') continue;
+
+      // Update status to sending
+      updateQueueItemStatus(item.id, 'sending');
+
+      try {
+        await fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item.payload) });
+        updateQueueItemStatus(item.id, 'success');
+        addLog(`Successfully sent to: ${item.to}`, 'success');
+      } catch (err) {
+        updateQueueItemStatus(item.id, 'error', String(err));
+        addLog(`Failed sending to: ${item.to} - ${String(err)}`, 'error');
+      }
+
+      if (isBulk && (i + 1) % 5 === 0) showNotify(`Sent ${i + 1}/${sendCount}...`, 'info');
+      
+      // Small delay between sends to prevent hitting limits too fast
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
+
+    setSending(false);
+    if (!isMailCancelledRef.current) {
+      showNotify(`Processed ${sendCount} message(s)!`, 'success');
+    } else {
+      showNotify(`Sending cancelled.`, 'info');
+    }
+    
+    if (!isBulk && !isMailCancelledRef.current) { 
+      setTo(''); setCc(''); setBcc(''); setSubject(''); setBody(''); setAttachments([]); 
+      if (editorRef.current) editorRef.current.innerHTML = ''; 
+    }
+  };
+
+  const updateQueueItemStatus = (id: number, status: MailQueueItem['status'], error?: string) => {
+    const nextQueue = mailQueueRef.current.map(item => item.id === id ? { ...item, status, error } : item);
+    mailQueueRef.current = nextQueue;
+    setMailQueue(nextQueue);
+  };
+
+  const toggleGlobalPause = () => {
+    isMailPausedRef.current = !isMailPausedRef.current;
+    setIsMailPaused(isMailPausedRef.current);
+  };
+
+  const cancelGlobalSending = () => {
+    isMailCancelledRef.current = true;
+    setSending(false);
+  };
+
+  const toggleItemPause = (id: number) => {
+    const item = mailQueueRef.current.find(i => i.id === id);
+    if (!item) return;
+    const newStatus = item.status === 'paused' ? 'pending' : 'paused';
+    updateQueueItemStatus(id, newStatus);
+  };
+
+  const cancelItem = (id: number) => {
+    updateQueueItemStatus(id, 'cancelled');
   };
 
   const copyToClipboard = (text: string) => {
@@ -615,17 +691,23 @@ const App: React.FC = () => {
             <div className="header-title">Dark Table Message</div>
           </div>
           <div className="header-actions">
+            {currentPlatform === 'gmail' && mailQueue.length > 0 && (
+              <button className={`preview-toggle-btn ${showMailQueue ? 'active' : ''}`} onClick={() => { setShowMailQueue(!showMailQueue); setShowBulk(false); setShowPreview(false); }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="no-scale"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <span>Queue</span>
+              </button>
+            )}
             {currentPlatform === 'whatsapp' && generatedWhatsAppItems.length > 0 && (
               <button className={`preview-toggle-btn ${showWhatsAppList ? 'active' : ''}`} onClick={() => { setShowWhatsAppList(!showWhatsAppList); setShowBulk(false); setShowPreview(false); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="no-scale"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                 <span>Queue</span>
               </button>
             )}
-            <button className={`preview-toggle-btn ${showBulk ? 'active' : ''}`} onClick={() => { setShowBulk(!showBulk); setShowPreview(false); setShowWhatsAppList(false); }}>
+            <button className={`preview-toggle-btn ${bulkActive ? 'active' : ''}`} onClick={() => { setShowBulk(!showBulk); setShowPreview(false); setShowWhatsAppList(false); setShowMailQueue(false); }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="no-scale"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span>Bulk</span>
             </button>
-            <button className={`preview-toggle-btn ${showPreview ? 'active' : ''}`} onClick={() => { setShowPreview(!showPreview); setShowBulk(false); setShowWhatsAppList(false); }}>
+            <button className={`preview-toggle-btn ${showPreview ? 'active' : ''}`} onClick={() => { setShowPreview(!showPreview); setShowBulk(false); setShowWhatsAppList(false); setShowMailQueue(false); }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="no-scale"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               <span>Preview</span>
             </button>
@@ -794,20 +876,59 @@ const App: React.FC = () => {
               )}
             </form>
 
-          {(showPreview || showBulk || showWhatsAppList) && (
+          {(showPreview || showBulk || showWhatsAppList || showMailQueue) && (
               <>
                 <div className={`resizer-handle ${isResizing ? 'active' : ''}`} onMouseDown={startResizing} />
                 <aside className="preview-panel" style={{ width: `${sidePanelWidth}px` }}>
-                  {currentPlatform === 'whatsapp' && showWhatsAppList ? (
+                  {currentPlatform === 'gmail' && showMailQueue ? (
                     <>
                       <div className="preview-header">
-                        <span>WhatsApp Queue</span>
-                        <div style={{ display: 'flex', gap: '0.5em' }}>
-                          <button className="secondary-btn small" onClick={() => { setGeneratedWhatsAppItems([]); setShowWhatsAppList(false); }}>Clear</button>
-                          <button className="close-btn" onClick={() => setShowWhatsAppList(false)}><CloseIcon /></button>
+                        <span>Mail Queue</span>
+                        <div className="queue-global-actions">
+                          <button className={`icon-btn small ${isMailPaused ? 'active' : ''}`} onClick={toggleGlobalPause} title={isMailPaused ? 'Resume All' : 'Pause All'}>
+                            {isMailPaused ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>}
+                          </button>
+                          <button className="icon-btn small danger" onClick={cancelGlobalSending} title="Cancel All">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                          </button>
+                          <button className="close-btn" onClick={() => setShowMailQueue(false)}><CloseIcon /></button>
                         </div>
                       </div>
-                      <div className="whatsapp-list-container">
+                      <div className="mail-queue-container">
+                        {mailQueue.map((item) => (
+                          <div key={item.id} className={`queue-item ${item.status}`}>
+                            <div className="queue-item-info">
+                              <div className="to">{item.to}</div>
+                              <div className="subject">{item.subject}</div>
+                              {item.error && <div className="error-msg">{item.error}</div>}
+                            </div>
+                            <div className="queue-item-status">
+                              <span className={`status-badge ${item.status}`}>{item.status}</span>
+                              {(item.status === 'pending' || item.status === 'paused' || item.status === 'sending') && (
+                                <div className="item-actions">
+                                  <button className="icon-btn xs" onClick={() => toggleItemPause(item.id)}>
+                                    {item.status === 'paused' ? <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> : <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>}
+                                  </button>
+                                  <button className="icon-btn xs danger" onClick={() => cancelItem(item.id)}>
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : currentPlatform === 'whatsapp' && showWhatsAppList ? (
+                  <>
+                    <div className="preview-header">
+                      <span>WhatsApp Queue</span>
+                      <div style={{ display: 'flex', gap: '0.5em' }}>
+                        <button className="secondary-btn small" onClick={() => { setGeneratedWhatsAppItems([]); setShowWhatsAppList(false); }}>Clear</button>
+                        <button className="close-btn" onClick={() => setShowWhatsAppList(false)}><CloseIcon /></button>
+                      </div>
+                    </div>
+                    <div className="whatsapp-list-container">
                         {generatedWhatsAppItems.length === 0 ? (
                           <div className="logs-empty">No messages generated yet. Click "Generate" to start.</div>
                         ) : (
@@ -835,7 +956,6 @@ const App: React.FC = () => {
                               </div>
                             ))}
                           </div>
-
                         )}
                       </div>
                     </>
