@@ -18,3 +18,4 @@ export const SOURCE_MODE_KEY = 'mailman_source_mode';
 export const MAIL_COUNT_MODE_KEY = 'mailman_mail_count_mode';
 export const VARIABLE_MAPPING_KEY = 'mailman_variable_mapping';
 export const FIXED_MAIL_RANGE_KEY = 'mailman_fixed_mail_range';
+export const CUSTOM_VARIABLE_VALUES_KEY = 'mailman_custom_variable_values';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { loadSetting, saveSetting, GAS_URL_KEY, WHATSAPP_COUNTRY_CODE_KEY, CURRENT_PLATFORM_KEY, THEME_KEY, UI_FONT_KEY, UI_FONT_SIZE_KEY, SIDE_PANEL_WIDTH_KEY, SOURCE_MODE_KEY, MAIL_COUNT_MODE_KEY, VARIABLE_MAPPING_KEY, FIXED_MAIL_RANGE_KEY } from './lib/storage';
+import { loadSetting, saveSetting, GAS_URL_KEY, WHATSAPP_COUNTRY_CODE_KEY, CURRENT_PLATFORM_KEY, THEME_KEY, UI_FONT_KEY, UI_FONT_SIZE_KEY, SIDE_PANEL_WIDTH_KEY, SOURCE_MODE_KEY, MAIL_COUNT_MODE_KEY, VARIABLE_MAPPING_KEY, FIXED_MAIL_RANGE_KEY, CUSTOM_VARIABLE_VALUES_KEY } from './lib/storage';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import './styles/theme.css';
@@ -81,6 +81,9 @@ const App: React.FC = () => {
   const [detectedVariables, setDetectedVariables] = useState<string[]>([]);
   const [variableMapping, setBulkMapping] = useState<Record<string, string>>(() => {
     try { return JSON.parse(loadSetting(VARIABLE_MAPPING_KEY) || '{}'); } catch { return {}; }
+  });
+  const [customVariableValues, setCustomVariableValues] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(loadSetting(CUSTOM_VARIABLE_VALUES_KEY) || '{}'); } catch { return {}; }
   });
   const [fixedMailRange, setFixedMailRange] = useState<{ from: number; to: number }>(() => {
     try { return JSON.parse(loadSetting(FIXED_MAIL_RANGE_KEY) || '{"from":1,"to":1}'); } catch { return { from: 1, to: 1 }; }
@@ -177,6 +180,10 @@ const App: React.FC = () => {
   }, [variableMapping]);
 
   useEffect(() => {
+    saveSetting(CUSTOM_VARIABLE_VALUES_KEY, JSON.stringify(customVariableValues));
+  }, [customVariableValues]);
+
+  useEffect(() => {
     saveSetting(FIXED_MAIL_RANGE_KEY, JSON.stringify(fixedMailRange));
   }, [fixedMailRange]);
 
@@ -239,7 +246,12 @@ const App: React.FC = () => {
   const replaceVariables = (text: string, row: any) => {
     let newText = text;
     Object.entries(variableMapping).forEach(([variable, column]) => {
-      const value = row[column] || '';
+      let value = '';
+      if (column === '__CUSTOM__') {
+        value = customVariableValues[variable] || '';
+      } else {
+        value = row[column] || '';
+      }
       newText = newText.replace(new RegExp(`{${variable}}`, 'g'), value);
     });
     return newText;
@@ -1046,24 +1058,36 @@ const App: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      {bulkColumns.length > 0 && detectedVariables.length > 0 && (
+                      {detectedVariables.length > 0 && (
                         <div className={`bulk-section ${!bulkActive ? 'disabled' : ''}`}>
                           <label>Variable Mapping</label>
                           <div className="mapping-container">
                             {detectedVariables.map(v => (
-                              <div className="mapping-item" key={v}>
-                                <div className="var-label"><code>{`{${v}}`}</code></div>
-                                <div className="mapping-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="no-scale"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-                                <select className="col-select" value={variableMapping[v] || ''} onChange={e => setBulkMapping(prev => ({ ...prev, [v]: e.target.value }))}>
-                                  <option value="">Select Column...</option>
-                                  {bulkColumns.map(col => <option key={col} value={col}>{col}</option>)}
-                                </select>
+                              <div className="mapping-item-wrapper" key={v}>
+                                <div className="mapping-item">
+                                  <div className="var-label"><code>{`{${v}}`}</code></div>
+                                  <div className="mapping-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="no-scale"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+                                  <select className="col-select" value={variableMapping[v] || ''} onChange={e => setBulkMapping(prev => ({ ...prev, [v]: e.target.value }))}>
+                                    <option value="">Select Column...</option>
+                                    {bulkColumns.map(col => <option key={col} value={col}>{col}</option>)}
+                                    <option value="__CUSTOM__">Custom Value...</option>
+                                  </select>
+                                </div>
+                                {variableMapping[v] === '__CUSTOM__' && (
+                                  <div className="custom-value-input">
+                                    <input 
+                                      type="text" 
+                                      placeholder={`Enter value for {${v}}`} 
+                                      value={customVariableValues[v] || ''} 
+                                      onChange={e => setCustomVariableValues(prev => ({ ...prev, [v]: e.target.value }))} 
+                                    />
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
                         </div>
-                      )}
-                      <div className={`bulk-section ${!bulkActive ? 'disabled' : ''}`}>
+                      )}                      <div className={`bulk-section ${!bulkActive ? 'disabled' : ''}`}>
                         <label>Mailing Strategy</label>
                         <div className="count-control">
                           <div className="mode-toggle">

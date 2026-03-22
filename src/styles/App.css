@@ -1055,15 +1055,40 @@ code,
   gap: 0.6em;
 }
 
+.mapping-item-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 0.5em;
+  padding: 0.6em 1em;
+}
+
 .mapping-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1em;
-  padding: 0.6em 1em;
-  background-color: var(--bg-primary);
+}
+
+.custom-value-input {
+  display: flex;
+}
+
+.custom-value-input input {
+  flex: 1;
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 0.5em;
+  border-radius: 0.4em;
+  padding: 0.5em 0.8em;
+  color: var(--text-primary);
+  font-size: 0.9em;
+  outline: none;
+}
+
+.custom-value-input input:focus {
+  border-color: var(--accent);
 }
 
 .var-label {
