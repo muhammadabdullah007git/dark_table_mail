@@ -1237,8 +1237,8 @@ const App: React.FC = () => {
               </p>
             </div>
             <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
-              <button className="primary-btn" onClick={() => handleSend(null, true)}>Send Anyway</button>
               <button className="secondary-btn" onClick={() => setShowSubjectEmptyConsent(false)}>Cancel</button>
+              <button className="primary-btn" onClick={() => handleSend(null, true)}>Send Anyway</button>
             </div>
           </div>
         </div>
